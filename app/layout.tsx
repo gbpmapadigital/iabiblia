@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import { Inter, Cormorant_Garamond, Outfit } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
+import { AuthProvider } from '@/hooks/useAuth';
 import './globals.css';
 
 const inter = Inter({
@@ -35,12 +36,14 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
           enableSystem
           disableTransitionOnChange
         >
-          {/* Futuristic Aura Background */}
-          <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-400/10 dark:bg-cyan-500/10 rounded-full blur-[120px] opacity-50 animate-pulse-slow"></div>
-            <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-[100px] opacity-30"></div>
-          </div>
-          {children}
+          <AuthProvider>
+            {/* Futuristic Aura Background */}
+            <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+              <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-400/10 dark:bg-cyan-500/10 rounded-full blur-[120px] opacity-50 animate-pulse-slow"></div>
+              <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-[100px] opacity-30"></div>
+            </div>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

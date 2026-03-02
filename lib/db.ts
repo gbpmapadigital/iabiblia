@@ -1,7 +1,14 @@
 import { supabase } from './supabase';
 
-// Helper to get a persistent device ID for anonymous users
-const getUserId = () => {
+// Helper to get a persistent device ID for anonymous users or logged in user
+const getUserId = async () => {
+  if (supabase) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      return session.user.id;
+    }
+  }
+
   if (typeof window === 'undefined') return 'server';
   let id = localStorage.getItem('biblia_ai_user_id');
   if (!id) {
@@ -28,12 +35,12 @@ export type Message = {
 };
 
 export async function getHighlights(bookId: string, chapter: number): Promise<Highlight[]> {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
       const { data, error } = await supabase
-        .from('highlights')
+        .from('verse_highlights')
         .select('verse, color')
         .eq('user_id', userId)
         .eq('book_id', bookId)
@@ -54,12 +61,12 @@ export async function getHighlights(bookId: string, chapter: number): Promise<Hi
 }
 
 export async function saveHighlight(bookId: string, chapter: number, verse: number, color: string) {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
       await supabase
-        .from('highlights')
+        .from('verse_highlights')
         .upsert({ 
           user_id: userId, 
           book_id: bookId, 
@@ -86,12 +93,12 @@ export async function saveHighlight(bookId: string, chapter: number, verse: numb
 }
 
 export async function removeHighlight(bookId: string, chapter: number, verse: number) {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
       await supabase
-        .from('highlights')
+        .from('verse_highlights')
         .delete()
         .eq('user_id', userId)
         .eq('book_id', bookId)
@@ -115,7 +122,7 @@ export async function removeHighlight(bookId: string, chapter: number, verse: nu
 
 // Studies & History
 export async function getStudies(): Promise<StudyHistory[]> {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
@@ -139,7 +146,7 @@ export async function getStudies(): Promise<StudyHistory[]> {
 }
 
 export async function saveStudy(study: StudyHistory) {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
@@ -167,7 +174,7 @@ export async function saveStudy(study: StudyHistory) {
 }
 
 export async function deleteStudy(id: string) {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
@@ -199,7 +206,7 @@ export async function deleteStudy(id: string) {
 }
 
 export async function updateStudyTitle(id: string, title: string) {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
@@ -227,7 +234,7 @@ export async function updateStudyTitle(id: string, title: string) {
 }
 
 export async function getStudyMessages(studyId: string): Promise<Message[]> {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
@@ -256,7 +263,7 @@ export async function getStudyMessages(studyId: string): Promise<Message[]> {
 }
 
 export async function saveStudyMessage(studyId: string, message: Message) {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
@@ -282,9 +289,133 @@ export async function saveStudyMessage(studyId: string, message: Message) {
   }
 }
 
+// --- New Phase 1 Tables ---
+
+export async function saveReadingHistory(bookId: string, chapter: number, verse?: number, isCompleted: boolean = false) {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      await supabase
+        .from('reading_history')
+        .upsert({ 
+          user_id: userId, 
+          book_id: bookId, 
+          chapter, 
+          verse,
+          is_completed: isCompleted,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,book_id,chapter,verse' });
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+}
+
+export async function getReadingHistory() {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('reading_history')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+        
+      if (!error && data) return data;
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+  return [];
+}
+
+export async function saveSearchHistory(query: string) {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      await supabase
+        .from('search_history')
+        .insert({ 
+          user_id: userId, 
+          query,
+          created_at: new Date().toISOString()
+        });
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+}
+
+export async function getSearchHistory() {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('search_history')
+        .select('query, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+        
+      if (!error && data) return data;
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+  return [];
+}
+
+export async function saveGeneratedImage(bookId: string, chapter: number, verse: number, imageUrl: string, prompt?: string) {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      await supabase
+        .from('generated_images')
+        .insert({ 
+          user_id: userId, 
+          book_id: bookId, 
+          chapter, 
+          verse,
+          image_url: imageUrl,
+          prompt,
+          created_at: new Date().toISOString()
+        });
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+}
+
+export async function getGeneratedImages(bookId: string, chapter: number, verse: number) {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('generated_images')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('book_id', bookId)
+        .eq('chapter', chapter)
+        .eq('verse', verse)
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) return data;
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+  return [];
+}
+
 // Goals
 export async function getGoals(): Promise<string> {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {
@@ -307,7 +438,7 @@ export async function getGoals(): Promise<string> {
 }
 
 export async function saveGoals(goals: string) {
-  const userId = getUserId();
+  const userId = await getUserId();
   
   if (supabase) {
     try {

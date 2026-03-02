@@ -2,15 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, BookOpen, Clock, ChevronRight, Share2 } from 'lucide-react';
+import { Search, BookOpen, Clock, ChevronRight, Share2, User } from 'lucide-react';
 import { generateVerseOfTheDay } from '@/lib/ai';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { formatBibleText } from '@/lib/bible-utils';
-import { getStudies, saveStudy, getGoals, type StudyHistory } from '@/lib/db';
+import { getStudies, saveStudy, getGoals, saveSearchHistory, type StudyHistory } from '@/lib/db';
 import { ShareVerse } from '@/components/ShareVerse';
+import { useAuth } from '@/hooks/useAuth';
+import { BIBLE_BOOKS } from '@/lib/bible-data';
 
 export default function Dashboard() {
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const [query, setQuery] = useState('');
   const [verse, setVerse] = useState<{ reference: string; text: string; explanation: string } | null>(null);
   const [loadingVerse, setLoadingVerse] = useState(true);
@@ -110,6 +113,7 @@ export default function Dashboard() {
       return;
     }
     
+    await saveSearchHistory(query);
     await createNewStudy(query);
   };
 
@@ -156,6 +160,36 @@ export default function Dashboard() {
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
+          
+          {user ? (
+            <div className="relative group">
+              <button className="flex items-center gap-2 text-xs md:text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <User size={16} />
+                </div>
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <div className="p-3 border-b border-border">
+                  <p className="text-sm font-medium truncate">{user.email}</p>
+                </div>
+                <div className="p-1">
+                  <button 
+                    onClick={() => signOut()}
+                    className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                  >
+                    Sair
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button 
+              onClick={() => router.push('/login')}
+              className="text-xs md:text-sm font-medium bg-primary/10 text-primary px-4 py-2 rounded-full hover:bg-primary/20 transition-colors whitespace-nowrap"
+            >
+              Entrar
+            </button>
+          )}
         </div>
       </header>
 
@@ -219,7 +253,6 @@ export default function Dashboard() {
                       const verseNum = match[3];
                       
                       // Find book ID
-                      const { BIBLE_BOOKS } = require('@/lib/bible-data');
                       const book = BIBLE_BOOKS.find((b: any) => 
                         b.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === bookName ||
                         b.id.replace(/\s+/g, '') === bookName.replace(/\s+/g, '')
