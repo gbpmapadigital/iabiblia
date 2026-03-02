@@ -1,6 +1,17 @@
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('NEXT_PUBLIC_GEMINI_API_KEY is not set. AI features will fail.');
+    }
+    aiInstance = new GoogleGenAI({ apiKey: apiKey || 'dummy-key' });
+  }
+  return aiInstance;
+}
 
 const SYSTEM_INSTRUCTION = `Você é um assistente de estudo bíblico online (Bíblia AI).
 Sua missão é explicar os textos bíblicos usando APENAS outros textos bíblicos como base.
@@ -22,7 +33,7 @@ export async function generateBibleStudy(prompt: string, history: { role: string
     parts: [{ text: prompt }]
   });
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: contents,
     config: {
@@ -57,7 +68,7 @@ Retorne APENAS um objeto JSON com o seguinte formato:
   ]
 }`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: prompt,
     config: {
@@ -92,7 +103,7 @@ Retorne APENAS um objeto JSON com o seguinte formato:
   ]
 }`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: 'gemini-3-flash-preview', // Use flash for faster text retrieval
     contents: prompt,
     config: {
@@ -123,7 +134,7 @@ Retorne APENAS um objeto JSON com o seguinte formato:
   "explanation": "Uma breve explicação (1-2 frases) de por que este versículo se aplica aos objetivos do usuário, usando apenas a Bíblia como base."
 }`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: prompt,
     config: {
