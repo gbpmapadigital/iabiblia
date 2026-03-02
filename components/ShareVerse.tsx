@@ -45,7 +45,7 @@ export function ShareVerse({ text, reference, className = '' }: ShareVerseProps)
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             title: reference,
-            text: `"${text}" - ${reference}\n\nGerado por IA Bíblia`,
+            text: `"${text}" - ${reference}\n\nGerado por IA Bíblia - https://iabiblia.vercel.app`,
             files: [file],
           });
         } else {
@@ -63,7 +63,7 @@ export function ShareVerse({ text, reference, className = '' }: ShareVerseProps)
   };
 
   const shareAsText = async () => {
-    const shareText = `"${text}"\n\n- ${reference}\n\nGerado por IA Bíblia`;
+    const shareText = `"${text}"\n\n- ${reference}\n\nGerado por IA Bíblia - https://iabiblia.vercel.app`;
     
     if (navigator.share) {
       try {

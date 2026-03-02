@@ -167,7 +167,7 @@ export default function StudySession() {
 
   const handleShare = () => {
     const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(messages));
-    const url = `${window.location.origin}/study/${id}?share=${compressed}`;
+    const url = `https://iabiblia.vercel.app/study/${id}?share=${compressed}`;
     
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
