@@ -42,7 +42,7 @@ export default function BookSelectionPage() {
         // fallback if fetch fails
         router.push(`/bible/${bookId}/${chapter}`);
       }
-    } catch (e) {
+    } catch {
       router.push(`/bible/${bookId}/${chapter}`);
     } finally {
       setLoadingVerses(false);

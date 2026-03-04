@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { Send, ArrowLeft, Share2, Copy, Check, BookOpen, Menu, X, Search, Clock, AlertCircle, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Send, ArrowLeft, Share2, Check, Menu, X, Search, Clock, AlertCircle, Plus, Edit2, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import LZString from 'lz-string';
 import { generateBibleStudy } from '@/lib/ai';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { linkifyBibleReferencesMarkdown } from '@/lib/bible-utils';
-import { getStudies, saveStudy, deleteStudy, updateStudyTitle, getStudyMessages, saveStudyMessage, type StudyHistory, type Message as DBMessage } from '@/lib/db';
+import { getStudies, deleteStudy, updateStudyTitle, getStudyMessages, saveStudyMessage, type StudyHistory } from '@/lib/db';
 
 type Message = {
   id: string;
@@ -167,7 +167,8 @@ export default function StudySession() {
 
   const handleShare = () => {
     const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(messages));
-    const url = `https://iabiblia.vercel.app/study/${id}?share=${compressed}`;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${baseUrl}/study/${id}?share=${compressed}`;
     
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);

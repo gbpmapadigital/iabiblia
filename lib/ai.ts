@@ -4,9 +4,9 @@ let aiInstance: GoogleGenAI | null = null;
 
 function getAI() {
   if (!aiInstance) {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn('NEXT_PUBLIC_GEMINI_API_KEY is not set. AI features will fail.');
+      console.warn('GEMINI_API_KEY is not set. AI features will fail.');
     }
     aiInstance = new GoogleGenAI({ apiKey: apiKey || 'dummy-key' });
   }
@@ -146,7 +146,7 @@ Retorne APENAS um objeto JSON com o seguinte formato:
 
   try {
     return JSON.parse(response.text || '{}');
-  } catch (e) {
+  } catch {
     return {
       reference: "Salmos 119:105",
       text: "Lâmpada para os meus pés é tua palavra, e luz para o meu caminho.",

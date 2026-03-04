@@ -223,7 +223,7 @@ export async function updateStudyTitle(id: string, title: string) {
   if (typeof window !== 'undefined') {
     const existing = localStorage.getItem('biblia_ai_history');
     if (existing) {
-      let history: StudyHistory[] = JSON.parse(existing);
+      const history: StudyHistory[] = JSON.parse(existing);
       const idx = history.findIndex(h => h.id === id);
       if (idx >= 0) {
         history[idx].title = title;
@@ -234,8 +234,6 @@ export async function updateStudyTitle(id: string, title: string) {
 }
 
 export async function getStudyMessages(studyId: string): Promise<Message[]> {
-  const userId = await getUserId();
-  
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -263,8 +261,6 @@ export async function getStudyMessages(studyId: string): Promise<Message[]> {
 }
 
 export async function saveStudyMessage(studyId: string, message: Message) {
-  const userId = await getUserId();
-  
   if (supabase) {
     try {
       await supabase
@@ -283,7 +279,7 @@ export async function saveStudyMessage(studyId: string, message: Message) {
   if (typeof window !== 'undefined') {
     const key = `study_messages_${studyId}`;
     const existing = localStorage.getItem(key);
-    let messages: Message[] = existing ? JSON.parse(existing) : [];
+    const messages: Message[] = existing ? JSON.parse(existing) : [];
     messages.push(message);
     localStorage.setItem(key, JSON.stringify(messages));
   }
@@ -306,6 +302,24 @@ export async function saveReadingHistory(bookId: string, chapter: number, verse?
           is_completed: isCompleted,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id,book_id,chapter,verse' });
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+}
+
+export async function removeReadingHistory(bookId: string, chapter: number, verse: number) {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      await supabase
+        .from('reading_history')
+        .delete()
+        .eq('user_id', userId)
+        .eq('book_id', bookId)
+        .eq('chapter', chapter)
+        .eq('verse', verse);
     } catch (e) {
       console.error('Supabase error', e);
     }
@@ -385,6 +399,83 @@ export async function saveGeneratedImage(bookId: string, chapter: number, verse:
           prompt,
           created_at: new Date().toISOString()
         });
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+}
+
+export async function getAllHighlights(): Promise<(Highlight & { book_id: string; chapter: number })[]> {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('verse_highlights')
+        .select('book_id, chapter, verse, color')
+        .eq('user_id', userId);
+        
+      if (!error && data) return data;
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+  
+  // Fallback to localStorage (this is more complex as they are stored by book/chapter)
+  if (typeof window !== 'undefined') {
+    const allHighlights: (Highlight & { book_id: string; chapter: number })[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(`highlights_${userId}_`)) {
+        const parts = key.split('_');
+        const bookId = parts[2];
+        const chapter = parseInt(parts[3]);
+        const data = JSON.parse(localStorage.getItem(key) || '[]');
+        data.forEach((h: Highlight) => {
+          allHighlights.push({ ...h, book_id: bookId, chapter });
+        });
+      }
+    }
+    return allHighlights;
+  }
+  return [];
+}
+
+export async function getVerseReadHistory(bookId: string, chapter: number): Promise<number[]> {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('reading_history')
+        .select('verse')
+        .eq('user_id', userId)
+        .eq('book_id', bookId)
+        .eq('chapter', chapter)
+        .not('verse', 'is', null);
+        
+      if (!error && data) return data.map(d => d.verse);
+    } catch (e) {
+      console.error('Supabase error', e);
+    }
+  }
+  return [];
+}
+
+export async function markChapterCompleted(bookId: string, chapter: number) {
+  const userId = await getUserId();
+  
+  if (supabase) {
+    try {
+      await supabase
+        .from('reading_history')
+        .upsert({ 
+          user_id: userId, 
+          book_id: bookId, 
+          chapter, 
+          is_completed: true,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,book_id,chapter,verse' });
     } catch (e) {
       console.error('Supabase error', e);
     }

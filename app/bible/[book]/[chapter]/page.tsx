@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, ChevronLeft, ChevronRight, X, MessageSquare, Eraser, BookOpen } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, X, MessageSquare, Eraser, BookOpen, CheckCircle2, CheckCircle } from 'lucide-react';
 import { BIBLE_BOOKS } from '@/lib/bible-data';
-import { generateBibleStudy, generateVerseExplanation, generateBibleText } from '@/lib/ai';
+import { generateVerseExplanation, generateBibleText } from '@/lib/ai';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { formatBibleText } from '@/lib/bible-utils';
-import { getHighlights, saveHighlight, removeHighlight, saveStudy } from '@/lib/db';
+import { getHighlights, saveHighlight, removeHighlight, saveStudy, saveReadingHistory, getVerseReadHistory, markChapterCompleted, removeReadingHistory } from '@/lib/db';
 import { ShareVerse } from '@/components/ShareVerse';
 
 type Verse = {
@@ -26,6 +26,15 @@ type ChapterData = {
 
 const HIGHLIGHT_COLORS = ['#fef08a', '#bbf7d0', '#bfdbfe', '#fbcfe8'];
 
+type Explanation = {
+  explanation: string;
+  relatedVerses?: {
+    reference: string;
+    text: string;
+    reason: string;
+  }[];
+};
+
 export default function ChapterPage() {
   const router = useRouter();
   const params = useParams();
@@ -38,12 +47,14 @@ export default function ChapterPage() {
   
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [highlights, setHighlights] = useState<Record<number, string>>({});
+  const [readVerses, setReadVerses] = useState<number[]>([]);
+  const [chapterCompleted, setChapterCompleted] = useState(false);
   const [showStudyPanel, setShowStudyPanel] = useState(false);
   
-  const [explanation, setExplanation] = useState<any>(null);
+  const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [loadingExplanation, setLoadingExplanation] = useState(false);
 
-  const bookInfo = BIBLE_BOOKS.find(b => 
+  const bookInfo = BIBLE_BOOKS.find((b: { id: string; name: string }) => 
     b.id === bookId || 
     b.id.replace(/\s+/g, '') === bookId.replace(/\s+/g, '')
   );
@@ -98,7 +109,7 @@ export default function ChapterPage() {
     }
   }, [bookId, chapterNum, bookInfo]);
 
-  // Load highlights
+  // Load highlights and reading history
   useEffect(() => {
     if (bookId && chapterNum) {
       getHighlights(bookId, chapterNum).then(data => {
@@ -106,6 +117,13 @@ export default function ChapterPage() {
         data.forEach(h => { hlMap[h.verse] = h.color; });
         setHighlights(hlMap);
       });
+
+      getVerseReadHistory(bookId, chapterNum).then(data => {
+        setReadVerses(data);
+      });
+
+      // Silent tracking: save that user accessed this chapter
+      saveReadingHistory(bookId, chapterNum);
     }
   }, [bookId, chapterNum]);
 
@@ -128,6 +146,33 @@ export default function ChapterPage() {
     setSelectedVerses(prev => 
       prev.includes(verseNum) ? prev.filter(v => v !== verseNum) : [...prev, verseNum]
     );
+  };
+
+  const toggleReadStatus = async () => {
+    const newRead = [...readVerses];
+    for (const v of selectedVerses) {
+      if (newRead.includes(v)) {
+        // Unmark as read
+        const idx = newRead.indexOf(v);
+        if (idx > -1) newRead.splice(idx, 1);
+        await removeReadingHistory(bookId, chapterNum, v);
+      } else {
+        newRead.push(v);
+        await saveReadingHistory(bookId, chapterNum, v, true);
+      }
+    }
+    setReadVerses(newRead);
+    setSelectedVerses([]);
+  };
+
+  const handleCompleteChapter = async () => {
+    await markChapterCompleted(bookId, chapterNum);
+    setChapterCompleted(true);
+    // Also mark all verses as read locally for UI consistency
+    if (data) {
+      const allVerses = data.verses.map(v => v.verse);
+      setReadVerses(allVerses);
+    }
   };
 
   const applyHighlight = async (color: string | null) => {
@@ -239,27 +284,60 @@ export default function ChapterPage() {
           ) : error ? (
             <div className="text-destructive text-center p-8 bg-destructive/10 rounded-2xl">{error}</div>
           ) : (
-            <div className="font-serif text-xl leading-loose text-foreground">
-              {data?.verses.map((verse) => {
-                const isSelected = selectedVerses.includes(verse.verse);
-                const highlightColor = highlights[verse.verse];
-                
-                return (
-                  <span 
-                    key={verse.verse} 
-                    id={`v${verse.verse}`}
-                    onClick={() => handleVerseClick(verse.verse)}
-                    className={`cursor-pointer transition-all duration-200 rounded px-1 py-0.5 ${
-                      isSelected ? 'ring-2 ring-primary bg-primary/20' : 'hover:bg-secondary'
+            <>
+              <div className="font-serif text-xl leading-loose text-foreground">
+                {data?.verses.map((verse) => {
+                  const isSelected = selectedVerses.includes(verse.verse);
+                  const isRead = readVerses.includes(verse.verse);
+                  const highlightColor = highlights[verse.verse];
+                  
+                  return (
+                    <span 
+                      key={verse.verse} 
+                      id={`v${verse.verse}`}
+                      onClick={() => handleVerseClick(verse.verse)}
+                      className={`cursor-pointer transition-all duration-200 rounded px-1 py-0.5 relative group ${
+                        isSelected ? 'ring-2 ring-primary bg-primary/20' : 'hover:bg-secondary'
+                      } ${isRead ? 'opacity-70' : ''}`}
+                      style={!isSelected && highlightColor ? { backgroundColor: highlightColor, color: '#0f172a' } : {}}
+                    >
+                      <sup className="text-xs font-sans font-bold text-muted-foreground mr-1">
+                        {isRead && <CheckCircle2 size={10} className="inline mr-0.5 text-emerald-500" />}
+                        {verse.verse}
+                      </sup>
+                      {verse.text}{' '}
+                    </span>
+                  );
+                })}
+              </div>
+
+              {!loading && !error && data && (
+                <div className="mt-12 pt-8 border-t border-border flex flex-col items-center gap-6">
+                  <button
+                    onClick={handleCompleteChapter}
+                    disabled={chapterCompleted}
+                    className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all transform hover:scale-105 ${
+                      chapterCompleted 
+                        ? 'bg-emerald-500/20 text-emerald-500 cursor-default' 
+                        : 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90'
                     }`}
-                    style={!isSelected && highlightColor ? { backgroundColor: highlightColor, color: '#0f172a' } : {}}
                   >
-                    <sup className="text-xs font-sans font-bold text-muted-foreground mr-1">{verse.verse}</sup>
-                    {verse.text}{' '}
-                  </span>
-                );
-              })}
-            </div>
+                    {chapterCompleted ? (
+                      <><CheckCircle size={24} /> Capítulo Concluído</>
+                    ) : (
+                      <><BookOpen size={24} /> Marcar Capítulo como Concluído</>
+                    )}
+                  </button>
+                  
+                  <div className="flex items-center gap-4 text-muted-foreground text-sm">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                      <span>{readVerses.length} de {data.verses.length} versículos lidos</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
@@ -277,6 +355,13 @@ export default function ChapterPage() {
                 aria-label={`Destacar com cor`}
               />
             ))}
+            <button 
+              onClick={toggleReadStatus}
+              className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-secondary text-emerald-500 transition-colors"
+              title="Marcar como lido"
+            >
+              <CheckCircle2 size={18} />
+            </button>
             <button 
               onClick={() => applyHighlight(null)}
               className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-secondary text-muted-foreground transition-colors"
@@ -347,7 +432,7 @@ export default function ChapterPage() {
                   <div>
                     <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Textos Relacionados</h3>
                     <div className="flex flex-col gap-4">
-                      {explanation.relatedVerses.map((rel: any, idx: number) => (
+                      {explanation.relatedVerses.map((rel: { reference: string; text: string; reason: string }, idx: number) => (
                         <div key={idx} className="border-l-2 border-primary pl-4 py-1">
                           <p className="font-bold text-sm text-foreground">{formatBibleText(rel.reference)}</p>
                           <p className="font-serif text-foreground my-1">&quot;{rel.text}&quot;</p>

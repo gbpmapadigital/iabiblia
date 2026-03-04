@@ -43,9 +43,10 @@ export function ShareVerse({ text, reference, className = '' }: ShareVerseProps)
         const file = new File([blob], 'versiculo.png', { type: 'image/png' });
 
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
           await navigator.share({
             title: reference,
-            text: `"${text}" - ${reference}\n\nGerado por IA Bíblia - https://iabiblia.vercel.app`,
+            text: `"${text}" - ${reference}\n\nGerado por IA Bíblia - ${baseUrl}`,
             files: [file],
           });
         } else {
@@ -63,7 +64,8 @@ export function ShareVerse({ text, reference, className = '' }: ShareVerseProps)
   };
 
   const shareAsText = async () => {
-    const shareText = `"${text}"\n\n- ${reference}\n\nGerado por IA Bíblia - https://iabiblia.vercel.app`;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareText = `"${text}"\n\n- ${reference}\n\nGerado por IA Bíblia - ${baseUrl}`;
     
     if (navigator.share) {
       try {

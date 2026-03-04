@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, BookOpen, Clock, ChevronRight, Share2, User } from 'lucide-react';
+import { Search, BookOpen, Clock, ChevronRight, User } from 'lucide-react';
 import { generateVerseOfTheDay } from '@/lib/ai';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { formatBibleText } from '@/lib/bible-utils';
@@ -139,9 +139,21 @@ export default function Dashboard() {
         <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-center sm:justify-end overflow-x-auto pb-2 sm:pb-0">
           <button 
             onClick={() => router.push('/study')}
-            className="text-xs md:text-sm font-medium text-primary hover:underline whitespace-nowrap"
+            className="text-xs md:text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
           >
             Estudos
+          </button>
+          <button 
+            onClick={() => router.push('/highlights')}
+            className="text-xs md:text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
+          >
+            Destaques
+          </button>
+          <button 
+            onClick={() => router.push('/progress')}
+            className="text-xs md:text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
+          >
+            Progresso
           </button>
           <button 
             onClick={() => router.push('/bible')}
@@ -152,7 +164,7 @@ export default function Dashboard() {
           </button>
           <button 
             onClick={() => router.push('/goals')}
-            className="text-xs md:text-sm font-medium text-primary hover:underline whitespace-nowrap"
+            className="text-xs md:text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
           >
             Objetivos
           </button>
@@ -253,7 +265,7 @@ export default function Dashboard() {
                       const verseNum = match[3];
                       
                       // Find book ID
-                      const book = BIBLE_BOOKS.find((b: any) => 
+                      const book = BIBLE_BOOKS.find((b: { id: string; name: string }) => 
                         b.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === bookName ||
                         b.id.replace(/\s+/g, '') === bookName.replace(/\s+/g, '')
                       );

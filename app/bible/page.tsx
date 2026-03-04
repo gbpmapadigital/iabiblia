@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Book, Search } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import { BIBLE_BOOKS } from '@/lib/bible-data';
 import { ThemeToggle } from '@/components/theme-toggle';
 

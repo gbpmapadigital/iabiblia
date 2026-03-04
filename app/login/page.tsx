@@ -43,8 +43,9 @@ export default function LoginPage() {
         if (error) throw error;
         setMessage('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.');
       }
-    } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro durante a autenticação.');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Ocorreu um erro durante a autenticação.');
     } finally {
       setLoading(false);
     }

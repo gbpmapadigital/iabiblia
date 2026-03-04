@@ -24,6 +24,18 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: 'IA Bíblia - Estudo Bíblico',
   description: 'Bíblia Online de Estudo Bíblico com Inteligência Artificial. A Bíblia explica a Bíblia.',
+  openGraph: {
+    title: 'IA Bíblia - Estudo Bíblico',
+    description: 'Bíblia Online de Estudo Bíblico com Inteligência Artificial. A Bíblia explica a Bíblia.',
+    type: 'website',
+    locale: 'pt_BR',
+    siteName: 'IA Bíblia',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'IA Bíblia - Estudo Bíblico',
+    description: 'Bíblia Online de Estudo Bíblico com Inteligência Artificial. A Bíblia explica a Bíblia.',
+  },
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {

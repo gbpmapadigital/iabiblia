@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Target, Save, Check } from 'lucide-react';
+import { ArrowLeft, Save, Check } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { getGoals, saveGoals } from '@/lib/db';
 
